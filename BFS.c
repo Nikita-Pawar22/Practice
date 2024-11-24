@@ -1,120 +1,90 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
-#define MAX 26 // Maximum number of vertices (A-Z)
+#define MAX_NODES 100
 
-int adj[MAX][MAX]; // Adjacency matrix
-int visited[MAX];
-int queue[MAX], front = -1, rear = -1;
+typedef struct Stack {
+    int items[MAX_NODES];
+    int top;
+} Stack;
 
-// Function to map a character to its index (A -> 0, B -> 1, ..., Z -> 25)
-int charToIndex(char c) {
-    return c - 'A';
+// Initialize the stack
+void initStack(Stack *s) {
+    s->top = -1;
 }
 
-// Function to map an index back to a character (0 -> A, 1 -> B, ..., 25 -> Z)
-char indexToChar(int i) {
-    return i + 'A';
+// Check if the stack is empty
+int isEmpty(Stack *s) {
+    return s->top == -1;
 }
 
-// Enqueue function for BFS
-void enqueue(int vertex) {
-    if (rear == MAX - 1)
-        printf("Queue is full\n");
-    else {
-        if (front == -1) front = 0;
-        queue[++rear] = vertex;
+// Push an element onto the stack
+void push(Stack *s, int value) {
+    if (s->top < MAX_NODES - 1) {
+        s->items[++(s->top)] = value;
     }
 }
 
-// Dequeue function for BFS
-int dequeue() {
-    if (front == -1 || front > rear) {
-        printf("Queue is empty\n");
-        return -1;
+// Pop an element from the stack
+int pop(Stack *s) {
+    if (!isEmpty(s)) {
+        return s->items[(s->top)--];
     }
-    return queue[front++];
+    return -1;
 }
 
-// BFS function with optional goal state
-void bfs(char startVertex, int vertices, char goalVertex) {
-    int i;
-    int startIndex = charToIndex(startVertex);
-    int goalIndex = goalVertex != '\0' ? charToIndex(goalVertex) : -1;
+void DFS(int graph[MAX_NODES][MAX_NODES], int n, int start, int end) {
+    int visited[MAX_NODES] = {0}; // To keep track of visited nodes
+    Stack stack;
+    initStack(&stack);
 
-    enqueue(startIndex);
-    visited[startIndex] = 1;
+    // Start DFS from the start node
+    push(&stack, start);
+    visited[start] = 1;
 
-    printf("BFS Traversal starting from vertex %c: ", startVertex);
-    while (front <= rear) {
-        int currentVertex = dequeue();
-        printf("%c ", indexToChar(currentVertex));
+    printf("DFS Traversal: ");
+    while (!isEmpty(&stack)) {
+        int current = pop(&stack);
+        printf("%d ", current);
 
-        // If goal state is specified and reached, stop BFS
-        if (currentVertex == goalIndex) {
-            printf("\nGoal vertex %c reached. Stopping traversal.\n", goalVertex);
+        // If the end node is reached, stop the traversal
+        if (current == end) {
+            printf("\nPath to end node %d found.\n", end);
             return;
         }
 
-        // Check all adjacent vertices
-        for (i = 0; i < vertices; i++) {
-            if (adj[currentVertex][i] == 1 && !visited[i]) {
-                enqueue(i);
+        // Visit all adjacent nodes
+        for (int i = 0; i < n; i++) {
+            if (graph[current][i] == 1 && !visited[i]) {
+                push(&stack, i);
                 visited[i] = 1;
             }
         }
     }
-    printf("\n");
+    printf("\nEnd node %d not reachable from start node %d.\n", end, start);
 }
 
 int main() {
-    int vertices, edges, i;
-    char startVertex, goalVertex;
-    int goalChoice;
+    int n, start, end;
+    int graph[MAX_NODES][MAX_NODES];
 
-    // Input number of vertices
-    printf("Enter the number of vertices in the graph (e.g., 5 for A-E): ");
-    scanf("%d", &vertices);
+    printf("Enter the number of nodes: ");
+    scanf("%d", &n);
 
-    // Input number of edges
-    printf("Enter the number of edges in the graph: ");
-    scanf("%d", &edges);
-
-    // Initialize adjacency matrix and visited array
-    for (i = 0; i < vertices; i++) {
-        for (int j = 0; j < vertices; j++) {
-            adj[i][j] = 0;
+    printf("Enter the adjacency matrix:\n");
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            scanf("%d", &graph[i][j]);
         }
-        visited[i] = 0;
     }
 
-    // Input edges
-    printf("Enter the edges (format: A B for an edge between A and B):\n");
-    for (i = 0; i < edges; i++) {
-        char u, v;
-        printf("Edge %d: ", i + 1);
-        scanf(" %c %c", &u, &v);
-        adj[charToIndex(u)][charToIndex(v)] = 1;
-        adj[charToIndex(v)][charToIndex(u)] = 1; // If the graph is undirected
-    }
+    printf("Enter the start node: ");
+    scanf("%d", &start);
 
-    // Input the starting vertex for BFS
-    printf("Enter the starting vertex for BFS (e.g., A): ");
-    scanf(" %c", &startVertex);
+    printf("Enter the end node: ");
+    scanf("%d", &end);
 
-    // Ask user whether they want to traverse the entire graph or go to a goal state
-    printf("Do you want to traverse the entire graph or stop at a goal vertex?\n");
-    printf("Enter 1 for entire graph, 2 for goal vertex: ");
-    scanf("%d", &goalChoice);
-
-    if (goalChoice == 2) {
-        printf("Enter the goal vertex (e.g., B): ");
-        scanf(" %c", &goalVertex);
-        bfs(startVertex, vertices, goalVertex);
-    } else {
-        bfs(startVertex, vertices, '\0'); // Pass '\0' for no goal
-    }
+    DFS(graph, n, start, end);
 
     return 0;
 }
