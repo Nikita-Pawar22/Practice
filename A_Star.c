@@ -1,226 +1,134 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
-#include <stdbool.h>
-#include <math.h>
 
-#define MAX_VERTICES 100
+#define MAX 100
 #define INF INT_MAX
 
-// Priority Queue structure
-typedef struct {
-    int vertex;
-    int priority;
-} PriorityQueueItem;
+int adj[MAX][MAX];    // Adjacency matrix for the graph
+int heuristic[MAX];   // Heuristic values for each node
+int gCost[MAX];       // gCost: Cost from the start node to the current node
+int fCost[MAX];       // fCost: gCost + heuristic
+int cameFrom[MAX];    // To reconstruct the path
+int openList[MAX];    // Open list
+int closedList[MAX];  // Closed list
+int numVertices, numEdges;
 
-typedef struct {
-    PriorityQueueItem *items;
-    int size;
-    int capacity;
-} PriorityQueue;
-
-// Priority Queue Functions
-PriorityQueue* createPriorityQueue(int initialCapacity) {
-    PriorityQueue *pq = (PriorityQueue*)malloc(sizeof(PriorityQueue));
-    pq->capacity = initialCapacity;
-    pq->size = 0;
-    pq->items = (PriorityQueueItem*)malloc(pq->capacity * sizeof(PriorityQueueItem));
-    return pq;
-}
-
-void swap(PriorityQueueItem *a, PriorityQueueItem *b) {
-    PriorityQueueItem temp = *a;
-    *a = *b;
-    *b = temp;
-}
-
-void heapifyUp(PriorityQueue *pq, int index) {
-    while (index > 0 && pq->items[index].priority < pq->items[(index - 1) / 2].priority) {
-        swap(&pq->items[index], &pq->items[(index - 1) / 2]);
-        index = (index - 1) / 2;
-    }
-}
-
-void heapifyDown(PriorityQueue *pq, int index) {
-    int smallest = index;
-    int left = 2 * index + 1;
-    int right = 2 * index + 2;
-    
-    if (left < pq->size && pq->items[left].priority < pq->items[smallest].priority) {
-        smallest = left;
-    }
-    if (right < pq->size && pq->items[right].priority < pq->items[smallest].priority) {
-        smallest = right;
-    }
-    if (smallest != index) {
-        swap(&pq->items[index], &pq->items[smallest]);
-        heapifyDown(pq, smallest);
-    }
-}
-
-void enqueue(PriorityQueue *pq, int vertex, int priority) {
-    if (pq->size == pq->capacity) {
-        pq->capacity *= 2;
-        pq->items = (PriorityQueueItem*)realloc(pq->items, pq->capacity * sizeof(PriorityQueueItem));
-    }
-    pq->items[pq->size].vertex = vertex;
-    pq->items[pq->size].priority = priority;
-    pq->size++;
-    heapifyUp(pq, pq->size - 1);
-}
-
-PriorityQueueItem dequeue(PriorityQueue *pq) {
-    if (pq->size == 0) {
-        printf("Priority Queue is empty\n");
-        PriorityQueueItem item = {-1, INF};  // Return an invalid item
-        return item;
-    }
-    PriorityQueueItem item = pq->items[0];
-    pq->items[0] = pq->items[pq->size - 1];
-    pq->size--;
-    heapifyDown(pq, 0);
-    return item;
-}
-
-bool isPriorityQueueEmpty(PriorityQueue *pq) {
-    return pq->size == 0;
-}
-
-typedef struct Node {
-    int vertex;
-    int weight;
-    struct Node *next;
-} Node;
-
-typedef struct {
-    Node **adjLists;
-    int numVertices;
-} Graph;
-
-Graph* createGraph(int vertices) {
-    Graph *g = (Graph*)malloc(sizeof(Graph));
-    g->numVertices = vertices;
-    g->adjLists = (Node**)malloc(vertices * sizeof(Node*));
-    
-    for (int i = 0; i < vertices; i++) {
-        g->adjLists[i] = NULL;
-    }
-    return g;
-}
-
-void addEdge(Graph *g, int start, int end, int weight) {
-    Node *newNode = (Node*)malloc(sizeof(Node));
-    newNode->vertex = end;
-    newNode->weight = weight;
-    newNode->next = g->adjLists[start];
-    g->adjLists[start] = newNode;
-}
-
-int heuristic(int vertex, int goal) {
-    return abs(vertex - goal); 
-}
-
-void aStar(Graph *g, int startVertex, int goalVertex) {
-    int *dist = (int*)malloc(g->numVertices * sizeof(int));
-    int *parent = (int*)malloc(g->numVertices * sizeof(int));
-    bool *visited = (bool*)malloc(g->numVertices * sizeof(bool));
-    PriorityQueue *pq = createPriorityQueue(MAX_VERTICES);
-    
-    for (int i = 0; i < g->numVertices; i++) {
-        dist[i] = INF;
-        parent[i] = -1;
-        visited[i] = false;
-    }
-    
-    dist[startVertex] = 0;
-    enqueue(pq, startVertex, heuristic(startVertex, goalVertex));
-    
-    while (!isPriorityQueueEmpty(pq)) {
-        PriorityQueueItem current = dequeue(pq);
-        int currentVertex = current.vertex;
-        
-        if (visited[currentVertex]) continue;
-        visited[currentVertex] = true;
-        
-        printf("Visited: %d\n", currentVertex);
-        if (currentVertex == goalVertex) {
-            printf("Goal %d reached\n", goalVertex);
-            break;
+// Function to find the node with the lowest fCost in the open list
+int findMinFCost() {
+    int minIndex = -1, minValue = INF;
+    for (int i = 0; i < numVertices; i++) {
+        if (openList[i] && fCost[i] < minValue) {
+            minValue = fCost[i];
+            minIndex = i;
         }
-        
-        Node *temp = g->adjLists[currentVertex];
-        while (temp) {
-            int adjVertex = temp->vertex;
-            int newDist = dist[currentVertex] + temp->weight;
-            if (!visited[adjVertex] && newDist < dist[adjVertex]) {
-                dist[adjVertex] = newDist;
-                parent[adjVertex] = currentVertex;
-                int priority = newDist + heuristic(adjVertex, goalVertex);
-                enqueue(pq, adjVertex, priority);
+    }
+    return minIndex;
+}
+
+// Function to reconstruct the path from start to goal
+void reconstructPath(int start, int goal) {
+    printf("Path: ");
+    int current = goal;
+    while (current != start) {
+        printf("%d <- ", current);
+        current = cameFrom[current];
+    }
+    printf("%d\n", start);
+}
+
+// A* Algorithm function
+void aStar(int start, int goal) {
+    // Initialize costs and lists
+    for (int i = 0; i < numVertices; i++) {
+        gCost[i] = INF;
+        fCost[i] = INF;
+        openList[i] = 0;
+        closedList[i] = 0;
+        cameFrom[i] = -1;
+    }
+
+    gCost[start] = 0;
+    fCost[start] = heuristic[start];
+    openList[start] = 1;
+
+    while (1) {
+        int current = findMinFCost();
+
+        if (current == -1) {
+            printf("No path to the goal node found.\n");
+            return;
+        }
+
+        if (current == goal) {
+            printf("Goal node %d reached with cost %d.\n", goal, gCost[goal]);
+            reconstructPath(start, goal);
+            return;
+        }
+
+        openList[current] = 0;
+        closedList[current] = 1;
+
+        printf("Visited node: %d\n", current);
+
+        // Explore neighbors
+        for (int i = 0; i < numVertices; i++) {
+            if (adj[current][i] > 0 && !closedList[i]) { // Edge exists and not in closed list
+                int tentativeGCost = gCost[current] + adj[current][i];
+
+                if (!openList[i]) { // If neighbor is not in the open list
+                    openList[i] = 1;
+                }
+
+                if (tentativeGCost < gCost[i]) { // Better path found
+                    cameFrom[i] = current;
+                    gCost[i] = tentativeGCost;
+                    fCost[i] = gCost[i] + heuristic[i];
+                }
             }
-            temp = temp->next;
         }
     }
-    
-    // Print the path from startVertex to goalVertex
-    printf("Path from %d to %d: ", startVertex, goalVertex);
-    int path[100]; 
-    int step = goalVertex;
-    int pathIndex = 0;
-
-    while (step != -1) {
-        path[pathIndex++] = step; 
-        step = parent[step];
-    }
-    
-    for (int i = pathIndex - 1; i >= 0; i--) {
-        printf("%d ", path[i]);
-    }
-    printf("\n");
-
-    free(dist);
-    free(parent);
-    free(visited);
-    free(pq->items);
-    free(pq);
-    for (int i = 0; i < g->numVertices; i++) {
-        Node *temp = g->adjLists[i];
-        while (temp) {
-            Node *toFree = temp;
-            temp = temp->next;
-            free(toFree);
-        }
-    }
-    free(g->adjLists);
-    free(g);
 }
 
 int main() {
-    int vertices, edges;
-    printf("Enter the number of vertices: ");
-    scanf("%d", &vertices);
+    int start, goal;
+    int src, dest, weight;
 
-    Graph *g = createGraph(vertices);
+    printf("Enter the number of nodes: ");
+    scanf("%d", &numVertices);
 
     printf("Enter the number of edges: ");
-    scanf("%d", &edges);
+    scanf("%d", &numEdges);
 
-    printf("Enter the edges (start_vertex end_vertex weight):\n");
-    for (int i = 0; i < edges; i++) {
-        int start, end, weight;
-        scanf("%d %d %d", &start, &end, &weight);
-        addEdge(g, start, end, weight);
-        addEdge(g, end, start, weight); // Assuming undirected graph
+    // Initialize adjacency matrix to 0
+    for (int i = 0; i < numVertices; i++) {
+        for (int j = 0; j < numVertices; j++) {
+            adj[i][j] = 0;
+        }
     }
 
-    int startVertex, goalVertex;
-    printf("Enter the start vertex: ");
-    scanf("%d", &startVertex);
+    // Input edges
+    printf("Enter edges (source destination weight):\n");
+    for (int i = 0; i < numEdges; i++) {
+        scanf("%d %d %d", &src, &dest, &weight);
+        adj[src][dest] = weight;
+        adj[dest][src] = weight; // For undirected graph
+    }
 
-    printf("Enter the goal vertex: ");
-    scanf("%d", &goalVertex);
+    // Input heuristic values
+    printf("Enter heuristic values for each node:\n");
+    for (int i = 0; i < numVertices; i++) {
+        scanf("%d", &heuristic[i]);
+    }
 
-    aStar(g, startVertex, goalVertex);
+    // Input start and goal nodes
+    printf("Enter the start node: ");
+    scanf("%d", &start);
+    printf("Enter the goal node: ");
+    scanf("%d", &goal);
+
+    // Run A* algorithm
+    aStar(start, goal);
 
     return 0;
 }
