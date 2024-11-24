@@ -3,7 +3,7 @@
 
 // Node structure for adjacency list
 struct Node {
-    int dest;
+    char dest;
     struct Node* next;
 };
 
@@ -13,7 +13,7 @@ struct AdjList {
 };
 
 // Function to create a new adjacency list node
-struct Node* createNode(int dest) {
+struct Node* createNode(char dest) {
     struct Node* newNode = (struct Node*)malloc(sizeof(struct Node));
     newNode->dest = dest;
     newNode->next = NULL;
@@ -21,37 +21,46 @@ struct Node* createNode(int dest) {
 }
 
 // Function to add an edge to the adjacency list
-void addEdge(struct AdjList adj[], int src, int dest) {
+void addEdge(struct AdjList adj[], char src, char dest) {
     // Add edge from src to dest
     struct Node* newNode = createNode(dest);
-    newNode->next = adj[src].head;
-    adj[src].head = newNode;
+    newNode->next = adj[src - 'A'].head; // Adjust index for characters
+    adj[src - 'A'].head = newNode;
 
     // Add edge from dest to src (for undirected graph)
     newNode = createNode(src);
-    newNode->next = adj[dest].head;
-    adj[dest].head = newNode;
+    newNode->next = adj[dest - 'A'].head;
+    adj[dest - 'A'].head = newNode;
 }
 
-// Recursive function to perform DFS
-void DFSRec(struct AdjList adj[], int visited[], int vertex) {
+// Recursive function to perform DFS with goal vertex option
+int DFSRec(struct AdjList adj[], int visited[], char vertex, char goalVertex, int entireGraph) {
     // Mark the current vertex as visited and print it
-    visited[vertex] = 1;
-    printf("%d ", vertex);
+    visited[vertex - 'A'] = 1;
+    printf("%c ", vertex);
+
+    // If we reach the goal vertex and entireGraph is not selected, stop traversal
+    if (!entireGraph && vertex == goalVertex) {
+        printf("\nGoal vertex %c reached. Stopping traversal.\n", vertex);
+        return 0;
+    }
 
     // Recur for all the vertices adjacent to this vertex
-    struct Node* temp = adj[vertex].head;
+    struct Node* temp = adj[vertex - 'A'].head;
     while (temp != NULL) {
-        int adjVertex = temp->dest;
-        if (!visited[adjVertex]) {
-            DFSRec(adj, visited, adjVertex);
+        char adjVertex = temp->dest;
+        if (!visited[adjVertex - 'A']) {
+            if (!DFSRec(adj, visited, adjVertex, goalVertex, entireGraph)) {
+                return 0; // Stop traversal
+            }
         }
         temp = temp->next;
     }
+    return 1; // Continue traversal
 }
 
 // Function to initialize DFS
-void DFS(struct AdjList adj[], int V, int startVertex) {
+void DFS(struct AdjList adj[], int V, char startVertex, int entireGraph, char goalVertex) {
     // Create a visited array and initialize all vertices as not visited
     int visited[V];
     for (int i = 0; i < V; i++) {
@@ -59,16 +68,16 @@ void DFS(struct AdjList adj[], int V, int startVertex) {
     }
 
     // Start DFS from the given vertex
-    printf("DFS Traversal starting from vertex %d: ", startVertex);
-    DFSRec(adj, visited, startVertex);
+    printf("DFS Traversal starting from vertex %c: ", startVertex);
+    DFSRec(adj, visited, startVertex, goalVertex, entireGraph);
     printf("\n");
 }
 
 int main() {
     int V, E;
-    
+
     // Take number of vertices and edges as input
-    printf("Enter the number of vertices in the graph: ");
+    printf("Enter the number of vertices in the graph (e.g., 5 for A-E): ");
     scanf("%d", &V);
 
     printf("Enter the number of edges in the graph: ");
@@ -81,21 +90,34 @@ int main() {
     }
 
     // Take input for the edges
-    printf("Enter the edges (format: source destination):\n");
+    printf("Enter the edges (format: A B for an edge between A and B):\n");
     for (int i = 0; i < E; i++) {
-        int src, dest;
+        char src, dest;
         printf("Edge %d: ", i + 1);
-        scanf("%d %d", &src, &dest);
+        scanf(" %c %c", &src, &dest);
         addEdge(adj, src, dest);
     }
 
     // Take the starting vertex for DFS
-    int startVertex;
-    printf("Enter the source vertex for DFS: ");
-    scanf("%d", &startVertex);
+    char startVertex;
+    printf("Enter the starting vertex for DFS (e.g., A): ");
+    scanf(" %c", &startVertex);
+
+    // Ask the user if they want to traverse the entire graph or stop at a goal vertex
+    int choice;
+    printf("Do you want to traverse the entire graph or stop at a goal vertex?\n");
+    printf("Enter 1 for entire graph, 2 for goal vertex: ");
+    scanf("%d", &choice);
+
+    int entireGraph = (choice == 1);
+    char goalVertex = '\0';
+    if (!entireGraph) {
+        printf("Enter the goal vertex (e.g., E): ");
+        scanf(" %c", &goalVertex);
+    }
 
     // Call DFS function
-    DFS(adj, V, startVertex);
+    DFS(adj, V, startVertex, entireGraph, goalVertex);
 
     return 0;
 }
