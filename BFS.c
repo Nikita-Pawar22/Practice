@@ -37,10 +37,11 @@ int dequeue() {
     return queue[front++];
 }
 
-// BFS function
-void bfs(char startVertex, int vertices) {
+// BFS function with optional goal state
+void bfs(char startVertex, int vertices, char goalVertex) {
     int i;
     int startIndex = charToIndex(startVertex);
+    int goalIndex = goalVertex != '\0' ? charToIndex(goalVertex) : -1;
 
     enqueue(startIndex);
     visited[startIndex] = 1;
@@ -49,6 +50,12 @@ void bfs(char startVertex, int vertices) {
     while (front <= rear) {
         int currentVertex = dequeue();
         printf("%c ", indexToChar(currentVertex));
+
+        // If goal state is specified and reached, stop BFS
+        if (currentVertex == goalIndex) {
+            printf("\nGoal vertex %c reached. Stopping traversal.\n", goalVertex);
+            return;
+        }
 
         // Check all adjacent vertices
         for (i = 0; i < vertices; i++) {
@@ -63,7 +70,8 @@ void bfs(char startVertex, int vertices) {
 
 int main() {
     int vertices, edges, i;
-    char startVertex;
+    char startVertex, goalVertex;
+    int goalChoice;
 
     // Input number of vertices
     printf("Enter the number of vertices in the graph (e.g., 5 for A-E): ");
@@ -95,8 +103,18 @@ int main() {
     printf("Enter the starting vertex for BFS (e.g., A): ");
     scanf(" %c", &startVertex);
 
-    // Perform BFS
-    bfs(startVertex, vertices);
+    // Ask user whether they want to traverse the entire graph or go to a goal state
+    printf("Do you want to traverse the entire graph or stop at a goal vertex?\n");
+    printf("Enter 1 for entire graph, 2 for goal vertex: ");
+    scanf("%d", &goalChoice);
+
+    if (goalChoice == 2) {
+        printf("Enter the goal vertex (e.g., B): ");
+        scanf(" %c", &goalVertex);
+        bfs(startVertex, vertices, goalVertex);
+    } else {
+        bfs(startVertex, vertices, '\0'); // Pass '\0' for no goal
+    }
 
     return 0;
 }
