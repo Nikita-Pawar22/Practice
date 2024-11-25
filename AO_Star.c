@@ -8,9 +8,10 @@ typedef struct Node {
     int isSolved;
     int cost;
     int heuristic;
-    int numChildren;
-    int children[100];
-    int isAndNode; // 1 for AND node, 0 for OR node
+    int numAndChildren;
+    int andChildren[100];
+    int numOrChildren;
+    int orChildren[100];
 } Node;
 
 Node* graph;
@@ -21,7 +22,8 @@ void initializeGraph() {
     for (int i = 0; i < N; i++) {
         graph[i].isSolved = 0;
         graph[i].cost = INF;
-        graph[i].numChildren = 0;
+        graph[i].numAndChildren = 0;
+        graph[i].numOrChildren = 0;
     }
 
     printf("Enter the heuristic values for each node:\n");
@@ -30,16 +32,21 @@ void initializeGraph() {
         scanf("%d", &graph[i].heuristic);
     }
 
-    printf("Enter the number of children and each child node for each parent node:\n");
+    printf("Enter the child details for each node (AND and OR children separately):\n");
     for (int i = 0; i < N; i++) {
-        printf("Number of children for node %d: ", i);
-        scanf("%d", &graph[i].numChildren);
-        for (int j = 0; j < graph[i].numChildren; j++) {
-            printf("Child %d of node %d: ", j + 1, i);
-            scanf("%d", &graph[i].children[j]);
+        printf("Number of AND children for node %d: ", i);
+        scanf("%d", &graph[i].numAndChildren);
+        for (int j = 0; j < graph[i].numAndChildren; j++) {
+            printf("AND Child %d of node %d: ", j + 1, i);
+            scanf("%d", &graph[i].andChildren[j]);
         }
-        printf("Is node %d an AND node (1 for YES, 0 for NO)? ", i);
-        scanf("%d", &graph[i].isAndNode);  // Input for AND/OR node
+
+        printf("Number of OR children for node %d: ", i);
+        scanf("%d", &graph[i].numOrChildren);
+        for (int j = 0; j < graph[i].numOrChildren; j++) {
+            printf("OR Child %d of node %d: ", j + 1, i);
+            scanf("%d", &graph[i].orChildren[j]);
+        }
     }
 }
 
@@ -49,42 +56,37 @@ int AOStar(int node) {
         return graph[node].cost;
     }
 
-    // Base case: If a node has no children, it's a leaf node (cost = 0)
-    if (graph[node].numChildren == 0) {
+    // Base case: If a node has no children, it's a leaf node
+    if (graph[node].numAndChildren == 0 && graph[node].numOrChildren == 0) {
         graph[node].isSolved = 1;
-        graph[node].cost = 0;
-        return 0;  // Leaf node, no further cost to explore
+        graph[node].cost = graph[node].heuristic;  // Leaf node cost = heuristic
+        return graph[node].cost;
     }
 
-    int totalCost = 0;
+    int andCost = 0, orCost = INF;
 
-    // Handle AND nodes (sum of all children's costs)
-    if (graph[node].isAndNode) {
-        totalCost = 0;  // For AND nodes, cost is sum of all child costs
-        for (int i = 0; i < graph[node].numChildren; i++) {
-            int child = graph[node].children[i];
-            int childCost = AOStar(child);  // Recursively solve for the child
-            if (childCost == INF) {
-                totalCost = INF;  // If any child has no solution, the parent can't be solved
-                break;
-            }
-            totalCost += childCost;  // Sum costs for AND nodes
+    // Compute cost for AND children
+    for (int i = 0; i < graph[node].numAndChildren; i++) {
+        int child = graph[node].andChildren[i];
+        int childCost = AOStar(child);  // Recursively solve for the child
+        if (childCost == INF) {
+            andCost = INF;  // If any AND child is unsolvable, this part is unsolvable
+            break;
         }
-    } 
-    // Handle OR nodes (minimum cost among all child nodes)
-    else {
-        totalCost = INF;  // For OR nodes, we are looking for the minimum cost
-        for (int i = 0; i < graph[node].numChildren; i++) {
-            int child = graph[node].children[i];
-            int childCost = AOStar(child);  // Recursively solve for the child
-            if (childCost < totalCost) {
-                totalCost = childCost;  // Minimize cost for OR nodes
-            }
+        andCost += childCost;  // Sum costs for AND children
+    }
+
+    // Compute cost for OR children
+    for (int i = 0; i < graph[node].numOrChildren; i++) {
+        int child = graph[node].orChildren[i];
+        int childCost = AOStar(child);  // Recursively solve for the child
+        if (childCost < orCost) {
+            orCost = childCost;  // Minimize cost for OR children
         }
     }
 
-    // Add the heuristic value of the current node
-    graph[node].cost = totalCost + graph[node].heuristic;
+    // Total cost = heuristic + min(andCost, orCost)
+    graph[node].cost = graph[node].heuristic + ((andCost < orCost) ? andCost : orCost);
 
     // Mark the current node as solved
     graph[node].isSolved = 1;
